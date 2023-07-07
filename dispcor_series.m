@@ -13,10 +13,20 @@ if nargin< 4, cdir = 'f'; end
 if nargin< 5, halforder = 1; end
 if nargin< 6, reduce_order = 1; end
 if nargin< 7 || isempty(nhextra), nhextra = 0; end
-if nargin< 8 || isempty(npextra), npextra = 24; end
-% npextra<=half of stencil width
-% highest derivative: 3*halforder, half width: nhextra+??
-
+if nargin< 8 || isempty(npextra)
+  % npextra<=half of stencil width
+  npextra = 0;
+  for k=halforder:-1:1
+    if reduce_order, jorder = 2*max(1,halforder-(k-1)); end
+    for ell=k:-1:1
+      ider = 2*k+ell; % -sign in (-dt)^ell
+      nwidth = 2*floor( (ider+1)/2 )+(jorder-1); % from get_fd_opt2.m
+      nph0 = ceil((nwidth-1)/2); % np0 = 2*nph0+1; iorder2 = np0-ider+1;
+      nph1 = nph0+nhextra; npextra = max(npextra,nph1);
+      fprintf(1,'ider=%d, jorder=%d, nph0=%d\n',ider,jorder,nph0);
+    end
+  end
+end
 if isempty(cdir) || ~isa(cdir(1),'char') || ~contains('fair',cdir)
   error('cdir should be f or a for adding or i or r for removing dispersion');
 end
