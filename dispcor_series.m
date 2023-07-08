@@ -1,5 +1,5 @@
-function [b,ndmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra,npextra)
-% [b,npmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra,npextra)
+function [b,ndmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra)
+% [b,npmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra)
 % cdir = 'f' or 'i' (add or remove dispersion)
 % nsub for subsampling (integer>=1)
 % nhextra: if nhextra > 0, use smoothing derivatives by enlarging stencil
@@ -9,78 +9,51 @@ function [b,ndmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra
 persistent Af Ai;
 
 if nargin< 3 || isempty(nsub), nsub = 1; end % subsampling (integer >= 1)
-if nargin< 4, cdir = 'f'; end
-if nargin< 5, halforder = 1; end
+if nargin< 4, cdir = 'i'; end
+if nargin< 5, halforder = 2; else, halforder = max(1,halforder); end
 if nargin< 6, reduce_order = 1; end
 if nargin< 7 || isempty(nhextra), nhextra = 0; end
-if nargin< 8 || isempty(npextra)
-  % npextra<=half of stencil width
-  npextra = 0;
-  for k=halforder:-1:1
-    if reduce_order, jorder = 2*max(1,halforder-(k-1)); end
-    for ell=k:-1:1
-      ider = 2*k+ell; % -sign in (-dt)^ell
-      nwidth = 2*floor( (ider+1)/2 )+(jorder-1); % from get_fd_opt2.m
-      nph0 = ceil((nwidth-1)/2); % np0 = 2*nph0+1; iorder2 = np0-ider+1;
-      nph1 = nph0+nhextra; npextra = max(npextra,nph1);
-      fprintf(1,'ider=%d, jorder=%d, nph0=%d\n',ider,jorder,nph0);
-    end
-  end
-end
+
 if isempty(cdir) || ~isa(cdir(1),'char') || ~contains('fair',cdir)
-  error('cdir should be f or a for adding or i or r for removing dispersion');
+  error('cdir should be ''f'' (or ''a'') for adding or ''i'' (or ''r'') for removing dispersion');
 end
 
 if size(a,2)==1, a = transpose(a); atrans = 1; else, atrans = 0; end
 
-dt2 = mean(diff(t)); dt = dt2/max(1,nsub); ntstart = 0;
-if t(1)>0
-  ntstart = round(t(1)/dt2); % rt = t(1)-jt*dt2;
-  if ntstart>0 % add samples at start, to let t(1)=0
-    t = [ (0:ntstart-1)*dt2 t(:)'];
-    a = [zeros(1,ntstart)   a(:)'];
-  end
-end
-if abs(t(1))>1.e-15*max(abs(t))  
-  warning('t(1) = %g non-zero\n',t(1));  
-else, t(1)=0;
-end
-
-if isempty(Af)
-  % [Af,Ai] = local_loadaa_10();
-  kmax = 10;
+if isempty(Af) || halforder > size(Af,1)
+  % [Af,Ai] = local_loadaa_10(); % backup if halforder<=10
+  kmax = max(halforder,10);
   [Af,Ai] = abmatrix(kmax,0); % up to dt^(2*kmax), kmax rows
-end % Af and Ai
+  for k=1:kmax
+    rk = 1/4^k / factorial(2*k+1); 
+    Af(k,:) = rk*Af(k,:);
+    sk = 1/(-16)^k * factorial(2*k)/( (2*k+1)*factorial(k)^2 );
+    Ai(k,:) = sk*Ai(k,:);
+  end
+end % r*Af and s*Ai
 
 if cdir(1) == 'f' || cdir(1) == 'a'
-  A = Af; cdir(1) = 'f';
+  A = Af;
 else
   A = Ai;
 end
 
-if length(A)<halforder
-  warning('order/2=%d not implemented; at most %d',halforder,length(A));
-  halforder = length(A);
-end
+% shift to t(1)=0
+t = t-t(1); t(1)= 0; dt2 = t(2); dt = dt2/max(1,nsub); ntstart = 0;
 
-rf = zeros(1,halforder); % scale factor / dt^(2*k)
-if cdir == 'f'
-  for k=1:halforder
-    rf(k) = 1/4^k / factorial(2*k+1);
-  end
-else
-  for k=1:halforder
-    rf(k) = 1/(-16)^k * factorial(2*k)/( (2*k+1)*factorial(k)^2 );
-  end
+% npextra is half of stencil width, to allow for central differencing
+if reduce_order, npextra =   halforder   + floor((1+halforder)/2);
+else,            npextra = 2*halforder-1 + floor((1+halforder)/2);
 end
+npextra = npextra+nhextra;
 
-b = zeros(size(a)); ndmax = 0;
-jorder = 2*max(1,halforder);
+b = zeros(size(a)); ndmax = 0; jorder = 2*halforder;
 for k=halforder:-1:1
-  if reduce_order, jorder = 2*max(1,halforder-(k-1)); end
-  for ell=k:-1:1
+  % reverse loop assuming values are smaller for larger k
+  if reduce_order, jorder = 2*(halforder-(k-1)); end
+  for ell=1:k
     ider = 2*k+ell; % -sign in (-dt)^ell
-    sfac = rf(k)*A(k,ell)/(-dt)^ell; % (1/dt^(2*k)) already in rf(k)
+    sfac = A(k,ell)/(-dt)^ell; % (1/dt^(2*k)) already in rf(k)
     % zero padding with npextra points on each side
     if nsub>1
       sfac = sfac/nsub^ider;
@@ -93,6 +66,7 @@ for k=halforder:-1:1
     b = b+da;
   end
 end
+
 if ntstart>0, b = b(ntstart+1:end); end
 if ndmax>npextra
   error('nd=%d > npextra=%d; increase initial npextra',ndmax,npextra);
