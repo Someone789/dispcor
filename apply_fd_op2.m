@@ -139,18 +139,16 @@ end
 end
 % _____________________________________________________________________________
 function local_file_changesize(fname,hordermax,nextramax)
-% [hordermax,nextramax] = local_file_changesize(fname,hordermax,nextramax)
+% local_file_changesize(fname,hordermax,nextramax)
 if isempty(fname), return; end
-a = readlines(fname); ip = contains(a,'cell'); 
-a(ip) = sprintf('ww2 = cell(%d,%d,%d);',3*hordermax,hordermax,nextramax);
+a = readlines(fname); 
+if isempty(a), warning('problem with file: %s',fname); end
+ip = contains(a,'cell'); ip = find(ip); 
+if isempty(ip), warning('file % has no line with cell()?',fname); return; end
+a(ip(1)) = sprintf('ww2 = cell(%d,%d,%d);',3*hordermax,hordermax,nextramax);
 fp = fopen(fname,'w');
 for j=1:length(a), fprintf(fp,'%s\n',a(j)); end
 fclose(fp);
 end
 % _____________________________________________________________________________
 %EOF
-
-
-
-
-
