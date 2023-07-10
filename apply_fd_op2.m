@@ -85,7 +85,7 @@ function wn = set_fd1_op2(ider,iorder,nhextra,fnamedif)
 %     [-fliplr(w)      0  w] for odd ider and
 %     [ fliplr(w) -sum(w) w] for even ider
 
-[w,nw,wsym,wnum,wden0,iorder2] = get_fd_op2(ider,iorder,nhextra);
+[w,nw,~,wnum,wden0,~] = get_fd_op2(ider,iorder,nhextra);
 w = w(nw+2:end); ws = wnum(nw+2:end); % use symmetry and ignore central value
 
 append_ww2(fnamedif,w,ws,wden0,ider,iorder,nhextra);
@@ -132,10 +132,11 @@ function [hordermax,nextramax] = local_file_getsize(fname)
 %
 hordermax = 0; nextramax = 0; if isempty(fname), return; end
 a = readlines(fname); ip = contains(a,'cell'); if ~any(ip), return; end
-aip = a(ip); ip2=strfind(aip,'cell'); b = sscanf(aip,"ww2 = cell(%d,%d,%d)");
+aip = a(ip); b = sscanf(aip,"ww2 = cell(%d,%d,%d)");
 if length(b)==3
   hordermax = b(2); nextramax = b(3);
 end
+
 end
 % _____________________________________________________________________________
 function local_file_changesize(fname,hordermax,nextramax)
@@ -149,6 +150,7 @@ a(ip(1)) = sprintf('ww2 = cell(%d,%d,%d);',3*hordermax,hordermax,nextramax);
 fp = fopen(fname,'w');
 for j=1:length(a), fprintf(fp,'%s\n',a(j)); end
 fclose(fp);
+
 end
 % _____________________________________________________________________________
 %EOF
