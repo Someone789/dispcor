@@ -1,11 +1,13 @@
-function [b,ndmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra)
+function [b,npmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra)
 % [b,npmax] = dispcor_series(a,t,nsub,cdir,halforder,reduce_order,nhextra)
 % cdir = 'f' or 'i' (add or remove dispersion)
-% nsub for subsampling (integer>=1)
+% nsub for subsampling (integer>=1), modelling timestep dt=(t(2)-t(1))/nsub
 % nhextra: if nhextra > 0, use smoothing derivatives by enlarging stencil
 %   with nhextra points on each side
-% npextra: zero padding with npextra points on each side
-% 
+%
+% b      is the corrected version of a
+% npmax  is extra number of points, used for central differencing with
+%        a stencil of 2*npmax+1 points
 persistent Af Ai;
 
 if nargin< 3 || isempty(nsub), nsub = 1; end % subsampling (integer >= 1)
@@ -47,7 +49,7 @@ else,            npextra = 2*halforder-1 + floor((1+halforder)/2);
 end
 npextra = npextra+nhextra;
 
-b = zeros(size(a)); ndmax = 0; jorder = 2*halforder;
+b = zeros(size(a)); npmax = 0; jorder = 2*halforder;
 for k=halforder:-1:1
   % reverse loop assuming values are smaller for larger k
   if reduce_order, jorder = 2*(halforder-(k-1)); end
@@ -61,15 +63,15 @@ for k=halforder:-1:1
     % zero padding with npextra on both ends to enable for central differencing
     a2 = [zeros(1,npextra) (a .* t.^ell) zeros(1,npextra)];
     [da,nda] = apply_fd_op2(a2,ider,jorder,nhextra,sfac);
-    ndmax = max(ndmax,nda); % internal check for stencil width (<=npextra?)
+    npmax = max(npmax,nda); % internal check for stencil width (<=npextra?)
     da = da(npextra+1:end-npextra); % remove padding
     b = b+da;
   end
 end
 
 if ntstart>0, b = b(ntstart+1:end); end
-if ndmax>npextra
-  error('nd=%d > npextra=%d; increase initial npextra',ndmax,npextra);
+if npmax>npextra
+  error('nd=%d > npextra=%d; increase initial npextra',npmax,npextra);
 end
 if atrans, b = transpose(b); end
 % _____________________________________________________________________________
