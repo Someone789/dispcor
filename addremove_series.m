@@ -13,7 +13,7 @@ close all; clear all; % overdone
 % _____________________________________________________________________________
 % after Koene et al., fig 3 with add&rm, 8 Hz Ricker, time (0:0.015:0.4)
 tmin = 0; tmax = 0.4; doplot = 1;
-type_wavelet = 0; % 0 (Ricket) or 1 (bump), details below
+type_wavelet = 0; % 0 (Ricker) or 1 (bump), details below
 % for series
 halfordermax = 4; % up to dt^(2*halfordermax)
 nhextra = 3; % extra points for stencil to suppress noise (2*nhextra added)
