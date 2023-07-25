@@ -55,7 +55,8 @@ for halforder=1:halfordermax
   legend('original','added','Location','Best');
 
   subplot(2,1,2); plot(t0,ws2-wt0,'k-');axis tight;
-  title(sprintf('error, order=2*%d, 2*%d extra points',nsub,halforder,nhextra));
+  title(sprintf('error (nsub=%d, order=2*%d, 2*%d extra points)',...
+    nsub,halforder,nhextra));
   pause(1);  
 end
 % _____________________________________________________________________________
